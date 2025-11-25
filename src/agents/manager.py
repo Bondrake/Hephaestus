@@ -423,14 +423,34 @@ class AgentManager:
         # Use the actual worktree path for the agent
         cwd_info = f"Working Directory: {worktree_path}" if worktree_path else ""
 
+        # Get workflow information for context
+        workflow_id = getattr(task, 'workflow_id', None) or ""
+        workflow_description = ""
+        if workflow_id and self.phase_manager:
+            try:
+                workflow = self.phase_manager.get_workflow(workflow_id)
+                if workflow:
+                    workflow_description = workflow.description or ""
+            except Exception as e:
+                logger.warning(f"Could not get workflow description: {e}")
+
         base_message = f"""
 === TASK ASSIGNMENT ===
 🔑 Your Agent ID: {agent_id}
    ⚠️  CRITICAL: Use this EXACT ID when calling MCP tools (update_task_status, create_task, etc.)
    ⚠️  DO NOT use 'agent-mcp' or any other placeholder - it will fail authorization!
 
-Task ID: {task.id}
-{cwd_info}
+📋 Task ID: {task.id}
+🔄 Workflow ID: {workflow_id if workflow_id else "N/A (standalone task)"}
+📁 {cwd_info}
+
+⚠️ CRITICAL WORKFLOW INFORMATION:
+When using MCP tools, you MUST include:
+- agent_id: {agent_id}
+- workflow_id: {workflow_id if workflow_id else "N/A"}
+
+This ensures your work stays within this workflow execution.
+All tasks and tickets you create must use workflow_id: {workflow_id if workflow_id else "N/A"}
 """
 
         logger.info(f"🔍 PROMPT SIZE DEBUG: Base message length: {len(base_message)} chars")
@@ -439,6 +459,11 @@ Task ID: {task.id}
         phase_context_section = ""
         if hasattr(task, 'phase_id') and task.phase_id:
             base_message += f"\nPhase ID: {task.phase_id}"
+
+            # Add workflow description if available
+            if workflow_description:
+                base_message += f"\n\n=== WORKFLOW CONTEXT ===\nWorkflow ID: {workflow_id}\nWorkflow Description: {workflow_description}\n"
+
             logger.info(f"=== PHASE CONTEXT DEBUG for task {task.id} ===")
             logger.info(f"Task has phase_id: {task.phase_id}")
 
