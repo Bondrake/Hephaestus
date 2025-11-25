@@ -18,6 +18,12 @@ class TestTaskSimilarityService:
         db_manager = Mock(spec=DatabaseManager)
         session = Mock()
         db_manager.get_session.return_value = session
+        
+        # Setup query mock to handle chained filters
+        query_mock = MagicMock()
+        session.query.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        
         return db_manager, session
 
     @pytest.fixture

@@ -111,7 +111,18 @@ class EmbeddingService:
 
         except Exception as e:
             logger.error(f"Error calculating cosine similarity: {e}")
-            return 0.0
+            # Fallback to pure Python implementation
+            try:
+                dot_product = sum(a * b for a, b in zip(vec1, vec2))
+                norm_a = sum(a * a for a in vec1) ** 0.5
+                norm_b = sum(b * b for b in vec2) ** 0.5
+                
+                if norm_a == 0 or norm_b == 0:
+                    return 0.0
+                    
+                return dot_product / (norm_a * norm_b)
+            except Exception:
+                return 0.0
 
     def calculate_batch_similarities(
         self, query_embedding: List[float], embeddings: List[List[float]]

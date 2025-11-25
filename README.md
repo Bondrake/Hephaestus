@@ -187,13 +187,31 @@ And **flexibility where you need it**:
 
 ### Prerequisites
 
-- **Python 3.10+**
+- **Python 3.12** (Recommended) - Python 3.14+ has known compatibility issues with SQLAlchemy
+- **Micromamba** (Recommended) - For robust environment management
 - **tmux** - Terminal multiplexer for agent isolation
 - **Git** - Your project must be a git repository
-- **Docker** - For running Qdrant vector store
+- **Docker** - Required for running Qdrant vector store
 - **Node.js & npm** - For the frontend UI
 - **Claude Code**, **OpenCode**, **Droid**, or **Codex** - CLI AI tool that agents run inside
 - **API Keys**: OpenAI, OpenRouter, Anthropic (also supports: Azure OpenAI, Google AI Studio - see [LLM Configuration](https://ido-levi.github.io/Hephaestus/docs/getting-started/quick-start#llm-configuration))
+
+### 🔧 Troubleshooting
+
+**Python Compatibility**
+If you encounter `TypingOnly` errors with SQLAlchemy, ensure you are using Python 3.12. We recommend using `micromamba` to manage your environment:
+```bash
+brew install micromamba
+micromamba create -n hephaestus-env python=3.12 -y
+micromamba activate hephaestus-env
+pip install -r requirements.txt
+```
+
+**Integration Tests**
+Full integration tests require Docker to be running for the Qdrant vector store.
+```bash
+docker run -p 6333:6333 qdrant/qdrant
+```
 
 ### Validate Your Setup (macOS)
 

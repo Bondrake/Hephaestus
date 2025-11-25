@@ -67,3 +67,6 @@ qdrant_data/
 frontend/node_modules/
 # Tmux
 .tmux/
+
+# Reports
+STATUS_REPORT.md
