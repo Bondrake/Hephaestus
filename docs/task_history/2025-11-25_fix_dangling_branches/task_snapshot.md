@@ -1,0 +1,14 @@
+- [x] Debug E2E Agent Launch
+    - [x] Investigate "Failed to create agent" error in `src/agents/manager.py` <!-- id: 0 -->
+    - [x] Fix agent creation issue (Fixed `stub_cli.py` payloads) <!-- id: 1 -->
+    - [x] Verify `stub_cli.py` receives input <!-- id: 2 -->
+    - [x] Pass `test_full_ticket_lifecycle` <!-- id: 3 -->
+- [x] Improve Debuggability <!-- id: 4 -->
+    - [x] Server: Log `RequestValidationError` details <!-- id: 5 -->
+    - [x] Client: Log response body in `stub_cli.py` on error <!-- id: 6 -->
+    - [x] Test: Clear `hephaestus_server.log` in `conftest.py` <!-- id: 7 -->
+    - [x] Agent: Restore traceback logging in `AgentManager` <!-- id: 8 -->
+- [x] Fix Dangling Branches <!-- id: 9 -->
+    - [x] Implement `cleanup_agent_worktree` in `WorktreeManager` <!-- id: 10 -->
+    - [x] Call cleanup in `AgentManager.terminate_agent` <!-- id: 11 -->
+    - [x] Add startup sweeper in `server.py` <!-- id: 12 -->
