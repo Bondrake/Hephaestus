@@ -26,6 +26,12 @@
 - Consult `README.md` for architecture overview.
 - Update or add documentation when behavior changes, keeping `prompts/` and `templates/` aligned with code updates.
 
+## Task Artifacts & History
+
+- **Archival**: Upon completing a complex task, archive key artifacts (plans, walkthroughs, logs) to `docs/task_history/YYYY-MM-DD_task_name/`.
+- **Workflow**: Use the `.agent/workflows/archive_task_artifacts.md` workflow to automate this process.
+- **Cleanup**: Do not leave `task.md` or `implementation_plan.md` in the root or brain directory indefinitely; archive and clear them to maintain a clean context.
+
 ## Testing Guidelines
 
 - Default to `python tests/run_all_tests.py`; use `--quick` for a smoke pass or run suites directly (e.g., `python tests/test_vector_store.py`). `pytest` and `pytest --cov=src` remain available for targeted coverage.
@@ -40,4 +46,5 @@
 ## Security & Configuration Tips
 
 - Store secrets in `.env`; use `hephaestus_config.yaml` or `config/agent_config.yaml` for overrides and never commit credentials.
-- Reset SQLite/Qdrant state through `scripts/` helpers to prevent orphaned agent records.
+- **Automated Cleanup**: The system automatically cleans up `agent-*` branches and worktrees upon agent termination or server startup.
+- **Manual Reset**: Reset SQLite/Qdrant state through `scripts/` helpers if deep cleaning is required.
