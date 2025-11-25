@@ -22,30 +22,36 @@ Thank you for your interest in contributing to Hephaestus! We welcome contributi
    ```
 
 2. **Set up Python environment**
-   We recommend using `micromamba` to ensure compatibility and avoid system python issues.
+   We recommend a **Hybrid Approach**: use `micromamba` to manage the Python environment (ensuring a clean Python 3.12) and `poetry` to manage project dependencies.
 
-   > **Note:** The instructions below are provided as a convenience and may change over time. For the most up-to-date installation instructions, please refer to the [official Micromamba documentation](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html).
+   > **Note:** The instructions below are provided as a convenience. For up-to-date instructions, refer to the [Micromamba docs](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html) and [Poetry docs](https://python-poetry.org/docs/).
 
    **macOS / Linux:**
    ```bash
-   # Install micromamba (if not already installed)
+   # 1. Install micromamba (if not already installed)
    "${SHELL}" <(curl -L micro.mamba.pm/install.sh)
 
-   # Create and activate environment
+   # 2. Create and activate environment
    micromamba create -n hephaestus-env python=3.12 -y
    micromamba activate hephaestus-env
-   pip install -r requirements.txt
+
+   # 3. Install Poetry and Dependencies
+   pip install poetry
+   poetry install
    ```
 
    **Windows (PowerShell):**
    ```powershell
-   # Install micromamba (if not already installed)
+   # 1. Install micromamba
    Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://micro.mamba.pm/install.ps1'))
 
-   # Create and activate environment
+   # 2. Create and activate environment
    micromamba create -n hephaestus-env python=3.12 -y
    micromamba activate hephaestus-env
-   pip install -r requirements.txt
+
+   # 3. Install Poetry and Dependencies
+   pip install poetry
+   poetry install
    ```
 
 3. **Configure environment variables**

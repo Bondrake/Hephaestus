@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Body, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
@@ -56,6 +56,12 @@ class TokenResponse(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     """Refresh token request model."""
+
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    """Logout request model."""
 
     refresh_token: str
 
@@ -251,7 +257,7 @@ async def register(request: UserRegisterRequest):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
     """Login with email and password."""
     db_manager = get_db_manager()
 
@@ -271,8 +277,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             record_login_attempt(
                 db=db,
                 email=form_data.username,
-                ip_address="",  # TODO: Get from request
-                user_agent="",  # TODO: Get from request
+                ip_address=request.client.host if request.client else "unknown",
+                user_agent=request.headers.get("user-agent", "unknown"),
                 success=False,
                 failure_reason="Invalid credentials"
             )
@@ -294,8 +300,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         record_login_attempt(
             db=db,
             email=form_data.username,
-            ip_address="",  # TODO: Get from request
-            user_agent="",  # TODO: Get from request
+            ip_address=request.client.host if request.client else "unknown",
+            user_agent=request.headers.get("user-agent", "unknown"),
             success=True
         )
 
@@ -304,10 +310,13 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         db.commit()
 
         # Create tokens
+        # Extract role names from user.roles relationship
+        role_names = [ur.role.name for ur in user.roles] if user.roles else []
+
         tokens = create_token_pair(
             user_id=user.id,
             email=user.email,
-            roles=[]  # TODO: Load user roles
+            roles=role_names
         )
 
         # Store refresh token
@@ -325,8 +334,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             id=str(uuid.uuid4()),
             user_id=user.id,
             session_token_hash=generate_secure_token(),
-            ip_address="",  # TODO: Get from request
-            user_agent="",  # TODO: Get from request
+            ip_address=request.client.host if request.client else "unknown",
+            user_agent=request.headers.get("user-agent", "unknown"),
             expires_at=datetime.utcnow() + timedelta(minutes=config.session_timeout_minutes)
         )
         db.add(session)
@@ -404,10 +413,12 @@ async def refresh_token(request: RefreshTokenRequest):
         stored_token.last_used_at = datetime.utcnow()
 
         # Create new tokens
+        role_names = [ur.role.name for ur in user.roles] if user.roles else []
+
         tokens = create_token_pair(
             user_id=user.id,
             email=user.email,
-            roles=[]  # TODO: Load user roles
+            roles=role_names
         )
 
         # Optionally revoke old refresh token and store new one
@@ -437,17 +448,84 @@ async def refresh_token(request: RefreshTokenRequest):
 
 
 @router.post("/logout")
-async def logout(token: str = Depends(oauth2_scheme)):
-    """Logout and invalidate tokens."""
-    # TODO: Implement token blacklisting or session termination
+async def logout(
+    request: Request,
+    logout_request: LogoutRequest,
+    token: str = Depends(oauth2_scheme)
+):
+    """Logout and revoke refresh token."""
+    db_manager = get_db_manager()
+    
+    # Hash the refresh token to find it in the database
+    from . import hash_token
+    token_hash = hash_token(logout_request.refresh_token)
+    
+    with db_manager.get_session() as db:
+        # Find the token
+        stored_token = db.query(AuthToken).filter(
+            AuthToken.token_hash == token_hash,
+            AuthToken.token_type == "refresh"
+        ).first()
+        
+        if stored_token:
+            # Revoke it
+            stored_token.revoked_at = datetime.utcnow()
+            db.commit()
+            
+            # Log the action
+            # We need to get the user to log it properly, but we can use the token's user_id
+            # Or we can verify the access token to get the user_id
+            
+            # Verify access token to get user context for logging
+            from . import verify_access_token
+            payload = verify_access_token(token)
+            user_id = payload.get("sub") if payload else stored_token.user_id
+            
+            logger.info(f"User {user_id} logged out, refresh token revoked")
+            
     return {"message": "Logged out successfully"}
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     """Get current user information."""
-    # TODO: Implement get current user from token
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
-    )
+    db_manager = get_db_manager()
+    
+    # Verify token and get payload
+    # Note: oauth2_scheme only extracts the token, we need to verify it
+    from . import verify_access_token
+    payload = verify_access_token(token)
+    
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    with db_manager.get_session() as db:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+            
+        return UserResponse(
+            id=user.id,
+            email=user.email,
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            created_at=user.created_at,
+            email_verified=user.email_verified,
+            status=user.status
+        )
