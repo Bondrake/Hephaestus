@@ -891,6 +891,13 @@ REMEMBER:
             session.commit()
             logger.info(f"Agent {agent_id} terminated successfully with output captured")
 
+            # Clean up worktree and git branch
+            try:
+                logger.info(f"Cleaning up worktree for agent {agent_id}")
+                self.worktree_manager.cleanup_agent_worktree(agent_id)
+            except Exception as e:
+                logger.error(f"Failed to cleanup worktree for agent {agent_id}: {e}")
+
         except Exception as e:
             logger.error(f"Failed to terminate agent {agent_id}: {e}")
             session.rollback()

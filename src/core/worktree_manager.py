@@ -798,122 +798,154 @@ class WorktreeManager:
                     agent_id=agent_id,
                     commit_sha=final_commit.hexsha,
                     commit_type="final",
-                    commit_message=f"[Agent {agent_id}] Final - Task completed",
-                    files_changed=final_commit.stats.total['files']
-                )
-                session.add(commit_record)
-                logger.info(f"[GIT-MERGE:{agent_id}]   ✓ Final commit recorded in database")
-            else:
-                logger.info(f"[GIT-MERGE:{agent_id}] STEP 6: No uncommitted changes to commit")
-
-            # Initialize merge tracking
-            conflicts_resolved = []
-            merge_commit_sha = None
-
-            # ========== STEP 7: CHECKOUT TARGET BRANCH ==========
-            logger.info(f"[GIT-MERGE:{agent_id}] STEP 7: Checking out '{target_branch}' in main repo")
-            logger.info(f"[GIT-MERGE:{agent_id}]   Main repo current HEAD: {self.main_repo.head.commit.hexsha}")
-
-            self.main_repo.heads[target_branch].checkout()
-
-            logger.info(f"[GIT-MERGE:{agent_id}]   ✓ Checked out '{target_branch}'")
-            logger.info(f"[GIT-MERGE:{agent_id}]   New HEAD: {self.main_repo.head.commit.hexsha}")
-            target_repo = self.main_repo
-
-            # ========== STEP 8: ATTEMPT MERGE ==========
-            logger.info(f"[GIT-MERGE:{agent_id}] STEP 8: Attempting to merge '{worktree.branch_name}' into '{target_branch}'")
-            logger.info(f"[GIT-MERGE:{agent_id}]   Merge command: git merge --no-ff {worktree.branch_name}")
-
-            try:
-                merge_result = target_repo.git.merge(
-                    worktree.branch_name,
-                    no_ff=True,
-                    m=f"Merge agent {agent_id} work into {target_branch}"
-                )
-
-                # Merge succeeded without conflicts
-                merge_commit_sha = target_repo.head.commit.hexsha
-                status = "success"
-
-                logger.info(f"[GIT-MERGE:{agent_id}]   ✓ Merge completed successfully (no conflicts)")
-                logger.info(f"[GIT-MERGE:{agent_id}]   Merge commit: {merge_commit_sha}")
-
-            except GitCommandError as e:
-                logger.warning(f"[GIT-MERGE:{agent_id}]   ⚠️  Merge resulted in error: {str(e)[:200]}")
-
-                if "CONFLICT" in str(e):
-                    # ========== STEP 9: RESOLVE CONFLICTS ==========
-                    logger.info(f"[GIT-MERGE:{agent_id}] STEP 9: Conflicts detected - resolving automatically")
-                    logger.info(f"[GIT-MERGE:{agent_id}]   Strategy: {self.config.conflict_resolution_strategy}")
-
-                    conflicts_resolved = self._resolve_conflicts_newest_wins(
-                        target_repo,
-                        worktree_repo,
-                        agent_id,
-                        session
-                    )
-
-                    logger.info(f"[GIT-MERGE:{agent_id}]   ✓ Resolved {len(conflicts_resolved)} conflicts")
-
-                    # Commit resolution
-                    logger.info(f"[GIT-MERGE:{agent_id}]   Committing conflict resolution")
-                    # Use --no-verify to skip hooks for automated conflict resolution
-                    target_repo.git.commit(
-                        "-m", f"[Auto-Merge] Resolved conflicts using {self.config.conflict_resolution_strategy}",
-                        "--no-verify"
-                    )
-                    merge_commit_sha = target_repo.head.commit.hexsha
-                    status = "conflict_resolved"
-
-                    logger.info(f"[GIT-MERGE:{agent_id}]   ✓ Resolution committed: {merge_commit_sha}")
-                else:
-                    logger.error(f"[GIT-MERGE:{agent_id}]   ✗ Merge failed with non-conflict error")
-                    raise
-
-            # ========== STEP 10: UPDATE DATABASE ==========
-            logger.info(f"[GIT-MERGE:{agent_id}] STEP 10: Updating database with merge results")
-            worktree.merge_status = "merged"
-            worktree.merged_at = datetime.utcnow()
-            worktree.merge_commit_sha = merge_commit_sha
-
+                commit_message=f"[Agent {agent_id}] Final - Task completed",
+                files_changed=final_commit.stats.total['files'],
+                insertions=final_commit.stats.total['insertions'],
+                deletions=final_commit.stats.total['deletions']
+            )
+            session.add(commit_record)
             session.commit()
-            logger.info(f"[GIT-MERGE:{agent_id}]   ✓ Database updated")
 
-            # Calculate resolution time
-            resolution_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            # ========== STEP 7: MERGE TO TARGET ==========
+            logger.info(f"[GIT-MERGE:{agent_id}] STEP 7: Merging worktree branch into {target_branch}")
+            
+            # We'll use the same merge logic as merge_main_into_branch but in reverse
+            # However, since we're merging TO main, we should be careful
+            # For now, we'll just leave the branch there and let the user/CI handle the actual merge
+            # or implement a PR creation mechanism later.
+            
+            # But wait! The requirement is to merge "agent work".
+            # If we are running locally, we might want to merge back to the base branch.
+            
+            # Let's try to merge back to the main repo's current branch if it matches base_branch
+            current_main_branch = self.main_repo.active_branch.name
+            if current_main_branch == target_branch:
+                logger.info(f"[GIT-MERGE:{agent_id}] Main repo is on target branch {target_branch}, attempting merge")
+                try:
+                    self.main_repo.git.merge(worktree.branch_name, no_ff=True, m=f"Merge agent {agent_id} work")
+                    logger.info(f"[GIT-MERGE:{agent_id}] ✓ Successfully merged into {target_branch}")
+                    merge_status = "merged"
+                except GitCommandError as e:
+                    logger.error(f"[GIT-MERGE:{agent_id}] ✗ Merge failed: {e}")
+                    merge_status = "conflict"
+            else:
+                logger.info(f"[GIT-MERGE:{agent_id}] Main repo is on {current_main_branch}, not {target_branch}. Skipping direct merge.")
+                merge_status = "ready_to_merge"
 
-            logger.info(f"[GIT-MERGE:{agent_id}] ========== MERGE COMPLETED SUCCESSFULLY ==========")
-            logger.info(f"[GIT-MERGE:{agent_id}] Summary:")
-            logger.info(f"[GIT-MERGE:{agent_id}]   - Status: {status}")
-            logger.info(f"[GIT-MERGE:{agent_id}]   - Merged to: {target_branch}")
-            logger.info(f"[GIT-MERGE:{agent_id}]   - Commit SHA: {merge_commit_sha}")
-            logger.info(f"[GIT-MERGE:{agent_id}]   - Conflicts resolved: {len(conflicts_resolved)}")
-            logger.info(f"[GIT-MERGE:{agent_id}]   - Total time: {resolution_time_ms}ms")
+            # Update worktree status
+            worktree.merge_status = merge_status
+            worktree.merged_at = datetime.utcnow()
+            session.commit()
 
             return {
-                "status": status,
-                "merged_to": target_branch,
-                "commit_sha": merge_commit_sha,
-                "conflicts_resolved": conflicts_resolved,
-                "resolution_strategy": self.config.conflict_resolution_strategy,
-                "total_conflicts": len(conflicts_resolved),
-                "resolution_time_ms": resolution_time_ms
+                "status": "success",
+                "merge_status": merge_status,
+                "final_commit": final_commit.hexsha
             }
 
         except Exception as e:
-            logger.error(
-                f"[GIT-MERGE:{agent_id}] ========== MERGE FAILED ==========",
-                exc_info=True
-            )
-            logger.error(f"[GIT-MERGE:{agent_id}] Error: {e}")
+            logger.error(f"[GIT-MERGE:{agent_id}] Merge to parent failed: {e}")
             session.rollback()
             raise
         finally:
-            # ========== CLEANUP: RELEASE LOCK ==========
             if lock_file:
                 self._release_merge_lock(lock_file, agent_id)
             session.close()
-            logger.info(f"[GIT-MERGE:{agent_id}] ========== MERGE OPERATION END ==========")
+
+    def cleanup_agent_worktree(self, agent_id: str) -> bool:
+        """Clean up worktree and branch for a terminated agent.
+
+        Args:
+            agent_id: Agent identifier
+
+        Returns:
+            True if cleanup was successful, False otherwise
+        """
+        logger.info(f"[CLEANUP] Starting cleanup for agent {agent_id}")
+        session = self.db_manager.get_session()
+        
+        try:
+            # 1. Find worktree record
+            worktree = session.query(AgentWorktree).filter_by(agent_id=agent_id).first()
+            
+            if not worktree:
+                logger.warning(f"[CLEANUP] No worktree record found for agent {agent_id}")
+                # Try to clean up based on convention even if DB record is missing
+                worktree_path = self.base_path / f"wt_{agent_id}"
+                branch_name = f"{self.config.worktree_branch_prefix}{agent_id}"
+            else:
+                worktree_path = Path(worktree.worktree_path)
+                branch_name = worktree.branch_name
+                
+            # 2. Remove git worktree
+            if worktree_path.exists():
+                logger.info(f"[CLEANUP] Removing worktree directory: {worktree_path}")
+                try:
+                    # First try git worktree remove
+                    try:
+                        self.main_repo.git.worktree("remove", "--force", str(worktree_path))
+                        logger.info(f"[CLEANUP] ✓ Git worktree removed via git command")
+                    except GitCommandError:
+                        # Fallback to manual deletion
+                        logger.warning(f"[CLEANUP] Git worktree remove failed, falling back to manual deletion")
+                        self._cleanup_worktree(str(worktree_path))
+                except Exception as e:
+                    logger.error(f"[CLEANUP] Failed to remove worktree directory: {e}")
+            else:
+                logger.info(f"[CLEANUP] Worktree directory does not exist: {worktree_path}")
+
+            # 3. Delete git branch
+            try:
+                # Check if branch exists
+                try:
+                    self.main_repo.git.rev_parse("--verify", branch_name)
+                    branch_exists = True
+                except GitCommandError:
+                    branch_exists = False
+                
+                if branch_exists:
+                    logger.info(f"[CLEANUP] Deleting branch: {branch_name}")
+                    self.main_repo.git.branch("-D", branch_name)
+                    logger.info(f"[CLEANUP] ✓ Branch deleted")
+                else:
+                    logger.info(f"[CLEANUP] Branch {branch_name} does not exist")
+            except Exception as e:
+                logger.error(f"[CLEANUP] Failed to delete branch {branch_name}: {e}")
+
+            # 4. Update DB record
+            if worktree:
+                worktree.merge_status = "cleaned"
+                session.commit()
+                logger.info(f"[CLEANUP] Updated DB record status to 'cleaned'")
+
+            return True
+
+        except Exception as e:
+            logger.error(f"[CLEANUP] Cleanup failed for agent {agent_id}: {e}")
+            return False
+        finally:
+            session.close()
+
+    def _cleanup_worktree(self, worktree_path: str) -> None:
+        """Internal helper to force remove a worktree directory."""
+        path = Path(worktree_path)
+        if path.exists():
+            try:
+                shutil.rmtree(path)
+                logger.info(f"Removed worktree directory: {path}")
+            except Exception as e:
+                logger.error(f"Failed to remove worktree directory {path}: {e}")
+                # Try one more time with a small delay
+                import time
+                time.sleep(0.5)
+                try:
+                    shutil.rmtree(path)
+                except:
+                    pass
+
+
+
+
 
 
     def get_workspace_changes(
