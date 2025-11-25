@@ -22,9 +22,29 @@ Thank you for your interest in contributing to Hephaestus! We welcome contributi
    ```
 
 2. **Set up Python environment**
+   We recommend using `micromamba` to ensure compatibility and avoid system python issues.
+
+   > **Note:** The instructions below are provided as a convenience and may change over time. For the most up-to-date installation instructions, please refer to the [official Micromamba documentation](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html).
+
+   **macOS / Linux:**
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   # Install micromamba (if not already installed)
+   "${SHELL}" <(curl -L micro.mamba.pm/install.sh)
+
+   # Create and activate environment
+   micromamba create -n hephaestus-env python=3.12 -y
+   micromamba activate hephaestus-env
+   pip install -r requirements.txt
+   ```
+
+   **Windows (PowerShell):**
+   ```powershell
+   # Install micromamba (if not already installed)
+   Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://micro.mamba.pm/install.ps1'))
+
+   # Create and activate environment
+   micromamba create -n hephaestus-env python=3.12 -y
+   micromamba activate hephaestus-env
    pip install -r requirements.txt
    ```
 
@@ -93,15 +113,12 @@ Have an idea? Open a **Feature Request** issue with:
 
 4. **Test your changes**
    ```bash
-   # Run tests
-   pytest
+   # Run the full integration test suite (Recommended)
+   python tests/run_all_tests.py
 
-   # Check code style
-   black src/ tests/
-   flake8 src/ tests/
-
-   # Type checking
-   mypy src/
+   # Run specific tests with pytest
+   pytest tests/unit
+   pytest tests/integration
    ```
 
 5. **Commit your changes**
@@ -200,18 +217,27 @@ def test_create_task(mock_db, mock_llm):
 
 ### Running Tests
 
+The primary way to run tests is via the test runner script, which handles environment checks and service dependencies:
+
 ```bash
-# All tests
-pytest
+# Run all tests
+python tests/run_all_tests.py
 
-# Specific test file
-pytest tests/test_mcp_server.py
+# Run quick smoke tests
+python tests/run_all_tests.py --quick
 
-# With coverage
-pytest --cov=src --cov-report=html
+# Run specific test module
+python tests/run_all_tests.py --module tests/test_mcp_server.py
+```
 
-# Integration tests only
-pytest tests/integration/
+You can also run pytest directly if you prefer:
+
+```bash
+# Unit tests
+pytest tests/unit
+
+# Integration tests (requires services running)
+pytest tests/integration
 ```
 
 ## 📚 Documentation

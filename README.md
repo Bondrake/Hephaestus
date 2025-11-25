@@ -293,6 +293,15 @@ This script checks:
 
 The script provides a color-coded report showing what's set up and what needs attention.
 
+### 🧪 Running Tests
+
+For detailed instructions on running the test suite, please refer to [CONTRIBUTING.md](CONTRIBUTING.md#running-tests).
+
+```bash
+# Quick smoke test
+python tests/run_all_tests.py --quick
+```
+
 ### 🚀 Deployment
 
 To deploy the full Hephaestus system (MCP Server, Qdrant, and Supervision Service) using Docker:

@@ -9,7 +9,7 @@
 
 ## Build, Test, and Development Commands
 
-- `poetry install` (preferred) or `pip install -r requirements.txt`, then start Qdrant with `docker run -p 6333:6333 qdrant/qdrant` or `docker-compose up -d`.
+- **Setup**: Use `micromamba` (recommended) to create a Python 3.12 environment: `micromamba create -n hephaestus-env python=3.12 -y && micromamba activate hephaestus-env && pip install -r requirements.txt`. Start Qdrant with `docker run -p 6333:6333 qdrant/qdrant`.
 - `python scripts/init_db.py` and `python scripts/init_qdrant.py` initialize SQLite tables and vector collections.
 - `python run_server.py` exposes the MCP API on port 8000.
 - `python run_supervisor.py` starts the Work-Centric Supervision service.
