@@ -1,19 +1,21 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useState, useCallback } from 'react';
 import ReactFlow, {
   Node,
   Edge,
-  Controls,
-  Background,
-  useNodesState,
-  useEdgesState,
   Position,
   ConnectionMode,
   Handle,
+  useNodesState,
+  useEdgesState,
+  Background,
+  Controls,
   MiniMap,
-} from 'react-flow-renderer';
+  BackgroundVariant,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, Bot, FileText, X, RefreshCw, Layers, ArrowRight, Play, Pause, Settings } from 'lucide-react';
+import { GitBranch, Bot, FileText, X, RefreshCw, ArrowRight, Play, Pause } from 'lucide-react';
 import { apiService } from '@/services/api';
 import { GraphNode, GraphEdge, PhaseInfo } from '@/types';
 import { useWebSocket } from '@/context/WebSocketContext';
@@ -250,7 +252,7 @@ const Graph: React.FC = () => {
   });
 
   // Create proper alternating columns
-  const layoutNodes = useCallback((graphNodes: GraphNode[], graphEdges: GraphEdge[], phases: Record<string, PhaseInfo>): Node[] => {
+  const layoutNodes = useCallback((graphNodes: GraphNode[], _: GraphEdge[], phases: Record<string, PhaseInfo>): Node[] => {
     const nodeMap = new Map<string, Node>();
 
     // Add phase info to task nodes
@@ -336,15 +338,12 @@ const Graph: React.FC = () => {
       // Calculate proportional distribution
       const totalTasks = p2TaskCount + p3TaskCount;
       let agentsForP2 = 0;
-      let agentsForP3 = 0;
 
       if (totalTasks > 0) {
         agentsForP2 = Math.round((p2TaskCount / totalTasks) * internalAgents.length);
-        agentsForP3 = internalAgents.length - agentsForP2;
       } else {
         // Even split if no tasks
         agentsForP2 = Math.floor(internalAgents.length / 2);
-        agentsForP3 = internalAgents.length - agentsForP2;
       }
 
       // Place agents in columns
@@ -534,7 +533,7 @@ const Graph: React.FC = () => {
     };
   }, [subscribe, refetch]);
 
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (node.type === 'task') {
       // Open TaskDetailModal for task nodes
       setSelectedTaskId(node.data.id);
@@ -559,7 +558,7 @@ const Graph: React.FC = () => {
     }
   }, []);
 
-  const onNodeMouseEnter = useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeMouseEnter = useCallback((_: React.MouseEvent, node: Node) => {
     if (!data) return;
 
     setHoveredNode(node.id);
@@ -758,10 +757,10 @@ const Graph: React.FC = () => {
           fitViewOptions={{ padding: 0.1, maxZoom: 0.8 }}
           style={{ width: '100%', height: '100%', paddingTop: '60px' }}
         >
-          <Background variant="dots" gap={20} size={1} />
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls />
           <MiniMap
-            nodeColor={(node) => {
+            nodeColor={(node: Node) => {
               if (node.type === 'agent') {
                 return node.data.status === 'external' ? '#9333EA' : '#3B82F6';
               }
@@ -790,7 +789,7 @@ const Graph: React.FC = () => {
         taskId={selectedTaskId}
         onClose={() => setSelectedTaskId(null)}
         onNavigateToTask={(taskId) => setSelectedTaskId(taskId)}
-        onNavigateToGraph={(taskId) => {
+        onNavigateToGraph={() => {
           setSelectedTaskId(null);
           // Could implement highlighting the task in the graph here
         }}

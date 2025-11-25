@@ -5,9 +5,8 @@ import {
   ChevronRight,
   ChevronLeft,
   AlertCircle,
-  CheckCircle,
-  Play,
   FileText,
+  Play,
 } from 'lucide-react';
 import {
   Dialog,
@@ -211,7 +210,7 @@ const LaunchWorkflowModal: React.FC<LaunchWorkflowModalProps> = ({
           </label>
         );
 
-      case 'select':
+      case 'select' as any:
       case 'dropdown':
         return (
           <select

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { useSocket } from '@/hooks/useSocket';
+import { useWebSocket } from '@/context/WebSocketContext';
 import { useWorkflow } from '@/context/WorkflowContext';
 import { apiService } from '@/services/api';
 import WorkflowSelector from '@/components/WorkflowSelector';
@@ -49,7 +49,7 @@ export default function Phases() {
   const [loadingPhase, setLoadingPhase] = useState<{[key: string]: boolean}>({});
   const [selectedDefinitionId, setSelectedDefinitionId] = useState<string | null>(null);
   const navigate = useNavigate();
-  const socket = useSocket();
+  const { subscribe } = useWebSocket();
   const { selectedExecutionId, definitions } = useWorkflow();
 
   // Get the selected definition
@@ -73,23 +73,19 @@ export default function Phases() {
 
   useEffect(() => {
     // Set up WebSocket listeners for real-time updates
-    if (socket) {
-      socket.on('phase_activity', (activity: PhaseActivity) => {
-        setActivities((prev) => [activity, ...prev].slice(0, 50)); // Keep last 50 activities
-      });
+    const unsubscribeActivity = subscribe('phase_activity', (activity: PhaseActivity) => {
+      setActivities((prev) => [activity, ...prev].slice(0, 50)); // Keep last 50 activities
+    });
 
-      socket.on('phase_update', () => {
-        refetch(); // Refresh phase data
-      });
-    }
+    const unsubscribeUpdate = subscribe('phase_update', () => {
+      refetch(); // Refresh phase data
+    });
 
     return () => {
-      if (socket) {
-        socket.off('phase_activity');
-        socket.off('phase_update');
-      }
+      unsubscribeActivity();
+      unsubscribeUpdate();
     };
-  }, [socket, refetch]);
+  }, [subscribe, refetch]);
 
   const getPhaseColor = (order: number, total: number) => {
     const opacity = 0.3 + (0.7 * ((order - 1) / Math.max(total - 1, 1)));
@@ -105,7 +101,8 @@ export default function Phases() {
 
     setLoadingPhase(prev => ({ ...prev, [phaseId]: true }));
     try {
-      const response = await fetch(`http://localhost:8000/api/phases/${phaseId}/yaml`);
+      const protocol = window.location.protocol;
+      const response = await fetch(`${protocol}//${window.location.host}/api/phases/${phaseId}/yaml`);
       const data = await response.json();
       setPhaseData(prev => ({ ...prev, [phaseId]: data }));
     } catch (error) {
@@ -340,7 +337,7 @@ export default function Phases() {
           <div className="relative h-12 bg-muted rounded-lg overflow-hidden">
             <div className="absolute inset-0 flex">
               {workflow.phases.map((phase) => {
-                const _width = `${100 / workflow.total_phases}%`;
+
                 const isActive = phase.active_agents > 0;
                 return (
                   <div

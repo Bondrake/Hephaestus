@@ -76,7 +76,7 @@ const Dashboard: React.FC = () => {
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [showLaunchModal, setShowLaunchModal] = useState(false);
   const { subscribe } = useWebSocket();
-  const { selectedExecutionId, selectedExecution, refreshExecutions } = useWorkflow();
+  const { selectedExecutionId, selectedExecution, refetch: refreshExecutions } = useWorkflow();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard-stats', selectedExecutionId],
@@ -144,7 +144,7 @@ const Dashboard: React.FC = () => {
     };
   }, [subscribe]);
 
-  const handleLaunchWorkflow = (workflowId: string) => {
+  const handleLaunchWorkflow = () => {
     refreshExecutions();
   };
 

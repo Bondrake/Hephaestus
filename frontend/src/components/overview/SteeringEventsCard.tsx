@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Target, CheckCircle, XCircle, RefreshCw, Navigation } from 'lucide-react';
+import { Target, CheckCircle, XCircle, Navigation, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import ClickableAgentCard from '@/components/ClickableAgentCard';
@@ -117,9 +117,9 @@ export default function SteeringEventsCard({ events }: SteeringEventsCardProps) 
                     </div>
                     {event.was_successful !== undefined && (
                       event.was_successful ? (
-                        <CheckCircle className="w-4 h-4 text-green-600" title="Successful" />
+                        <CheckCircle className="w-4 h-4 text-green-600" />
                       ) : (
-                        <XCircle className="w-4 h-4 text-red-600" title="Failed" />
+                        <XCircle className="w-4 h-4 text-red-600" />
                       )
                     )}
                   </div>

@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Monitor,
-  Download,
-  Wifi,
-  WifiOff
-} from 'lucide-react';
+import { Monitor, Download, Wifi, WifiOff } from 'lucide-react';
 import { apiService } from '@/services/api';
 import { useWebSocket } from '@/context/WebSocketContext';
 import ExecutionSelector from '@/components/ExecutionSelector';
@@ -72,12 +67,12 @@ const Observability: React.FC = () => {
   const { subscribe } = useWebSocket();
 
   // Layout persistence
-  const { saveLayout, loadLayout } = useLayoutPersistence();
+  useLayoutPersistence();
 
   // Multi-agent output management - only fetch output for agents with panels, and only when not in sidebar-only mode
   const panelAgentIds = useMemo(() => gridLayout.panels.map(panel => panel.agentId), [gridLayout.panels]);
   const shouldFetchOutput = panelAgentIds.length > 0 && visibleAgents.size > 0;
-  const { outputs: agentOutputs, stats, retryAgent } = useMultiAgentOutput(
+  const { outputs: agentOutputs, stats } = useMultiAgentOutput(
     panelAgentIds,
     {
       enabled: !globalPaused && shouldFetchOutput,

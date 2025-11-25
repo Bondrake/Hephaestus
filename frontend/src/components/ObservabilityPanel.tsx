@@ -11,9 +11,8 @@ import {
   EyeOff,
   Clock,
   FileText,
-  Search
+
 } from 'lucide-react';
-import PanelSearch, { HighlightedContent } from './PanelSearch';
 import { formatDistanceToNow } from 'date-fns';
 import { Agent } from '@/types';
 

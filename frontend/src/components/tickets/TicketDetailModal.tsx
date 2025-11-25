@@ -5,7 +5,6 @@ import {
   X,
   Edit2,
   User,
-  Tag,
   MessageCircle,
   GitCommit,
   Lock,
@@ -15,6 +14,7 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  Tag,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
@@ -22,14 +22,12 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { toast } from 'react-hot-toast';
 import { apiService } from '@/services/api';
-import { Task } from '@/types';
-import type { TicketDetail } from '@/types';
 import { cn } from '@/lib/utils';
+import { PhaseBadge } from '../PhaseBadge';
+import TicketApprovalUI from './TicketApprovalUI';
 import GitDiffModal from './GitDiffModal';
 import AgentDetailModal from '../AgentDetailModal';
-import { PhaseBadge } from '../PhaseBadge';
 import TaskDetailModal from '../TaskDetailModal';
-import TicketApprovalUI from './TicketApprovalUI';
 
 interface TicketDetailModalProps {
   ticketId: string;

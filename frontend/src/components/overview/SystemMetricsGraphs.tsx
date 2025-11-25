@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, AreaChart } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Area, AreaChart, CartesianGrid } from 'recharts';
 import { TrendingUp, Activity, Users, Filter } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
 
 interface MetricsDataPoint {
   timestamp: string;
@@ -23,7 +22,7 @@ export default function SystemMetricsGraphs({ metricsHistory, phases = [] }: Sys
   const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h' | 'all'>('6h');
 
   // Filter data based on selected phase and time range
-  const filteredData = React.useMemo(() => {
+  const filteredData = useMemo(() => {
     let data = [...metricsHistory];
 
     // Filter by phase if selected
