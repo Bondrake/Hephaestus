@@ -214,14 +214,14 @@ And **flexibility where you need it**:
 
 Hephaestus uses a continuous supervision loop to manage agent autonomy safely. Instead of just "monitoring" agents, it actively supervises the **work** they are doing.
 
-#### 1. The Supervisor Loop
+#### 1. The Supervisor Loop (`ProjectSupervisor`)
 
 A continuous service (`run_supervisor.py`) that runs alongside the MCP server. It wakes up periodically to:
 
--   **Sense**: Gather data from Git, CI/CD, and the filesystem.
--   **Analyze**: Use LLMs to evaluate the "trajectory" of each work item.
+-   **Sense**: Gather data from Git (conflicts, branches), CI/CD status, and the filesystem.
+-   **Analyze**: Use LLMs to evaluate the "trajectory" of each work item via `TrajectoryAnalysis`.
 -   **Decide**: Apply policy rules (e.g., "High risk changes need human approval").
--   **Act**: Send control signals to agents (Pause, Rollback, Redirect).
+-   **Act**: Send `SteeringEvents` to agents (Pause, Rollback, Redirect).
 
 ### 2. Trajectory Analysis
 
@@ -233,16 +233,17 @@ Agents don't just have a "state" (Running/Failed); they have a **trajectory**.
 
 The supervisor builds a `TrajectorySnapshot` and asks an LLM: *"Given the history, where is this agent heading?"*
 
-### 3. Policy Engine
+### 3. Policy Engine & Steering
 
-Not all interventions are equal.
+Not all interventions are equal. The system uses `SteeringEvents` to guide agents:
 
 -   **Low Risk**: Auto-apply fixes (e.g., "You forgot to run formatting").
 -   **High Risk**: Hold for human approval (e.g., "Agent wants to delete the database").
+-   **Correction**: Redirect agent focus (e.g., "You are modifying the wrong file, switch to X").
 
 ### 4. Control Channel
 
-A dedicated communication channel that allows the supervisor to intervene *during* an agent's execution. It can force an agent to stop, revert changes, or change its plan.
+A dedicated communication channel that allows the supervisor to intervene *during* an agent's execution. It can force an agent to stop, revert changes, or change its plan via the `AgentManager`.
 
 ## 🚀 Quick Start
 
@@ -300,7 +301,13 @@ For detailed instructions on running the test suite, please refer to [CONTRIBUTI
 ```bash
 # Quick smoke test
 python tests/run_all_tests.py --quick
+
+# Run full E2E suite (requires Docker & Stub LLM)
+python tests/run_all_tests.py --e2e
 ```
+
+**End-to-End (E2E) Testing**:
+Hephaestus includes a comprehensive E2E test suite that runs agents in a controlled environment using a `StubLLMProvider`. This allows for offline verification of the entire ticket lifecycle—from creation to completion—without incurring LLM costs or flakiness.
 
 ### 🚀 Deployment
 

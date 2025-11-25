@@ -6,7 +6,7 @@ Thank you for your interest in contributing to Hephaestus! We welcome contributi
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.12 (Required for SQLAlchemy compatibility)
 - Node.js 20+ and npm
 - Docker (for Qdrant)
 - tmux
@@ -200,6 +200,21 @@ def create_task(
 - Add JSDoc/docstrings for new functions
 - Include examples in documentation
 
+### Frontend Development
+
+The frontend codebase enforces strict TypeScript checks to prevent runtime errors.
+
+- **Strict Mode**: `strict: true` is enabled in `tsconfig.json`.
+- **Build Checks**: `npm run build` includes a `tsc` check. Ensure no type errors exist before committing.
+- **Unused Code**: `noUnusedLocals` and `noUnusedParameters` are enabled. Remove any unused imports or variables.
+
+To verify your changes:
+```bash
+cd frontend
+npm run type-check
+npm run build
+```
+
 ## 🧪 Testing Guidelines
 
 ### Writing Tests
@@ -244,6 +259,10 @@ pytest tests/unit
 
 # Integration tests (requires services running)
 pytest tests/integration
+
+# End-to-End tests (requires Docker & Stub LLM)
+# This runs the full ticket lifecycle using a stubbed LLM provider
+python tests/run_all_tests.py --e2e
 ```
 
 ## 📚 Documentation

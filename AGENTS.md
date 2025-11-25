@@ -46,5 +46,7 @@
 ## Security & Configuration Tips
 
 - Store secrets in `.env`; use `hephaestus_config.yaml` or `config/agent_config.yaml` for overrides and never commit credentials.
-- **Automated Cleanup**: The system automatically cleans up `agent-*` branches and worktrees upon agent termination or server startup.
+- **Automated Cleanup**: The system automatically cleans up `agent-*` branches and worktrees upon agent termination or server startup. This prevents "dangling branches" from cluttering the repo.
+    - **Startup Sweeper**: `server.py` runs a cleanup routine on startup to remove any stale worktrees from previous crashed sessions.
+    - **Termination Cleanup**: `AgentManager` ensures worktrees are removed when an agent finishes its task.
 - **Manual Reset**: Reset SQLite/Qdrant state through `scripts/` helpers if deep cleaning is required.
