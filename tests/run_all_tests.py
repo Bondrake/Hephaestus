@@ -137,6 +137,11 @@ async def main():
         ("test_vector_store.py", "Vector Store Tests"),
         ("test_rag_system.py", "RAG System Tests"),
         ("test_mcp_server.py", "MCP Server Tests"),
+        ("verification/verify_control.py", "Control Channel Verification"),
+        ("verification/verify_supervisor.py", "WorkItem Supervisor Verification"),
+        ("verification/verify_policy.py", "Policy Engine Verification"),
+        ("verification/verify_project_supervisor.py", "Project Supervisor Verification"),
+        ("verification/verify_full_loop.py", "Full Supervision Loop Verification"),
     ]
 
     # Run each test module

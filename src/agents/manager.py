@@ -6,6 +6,7 @@ import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import libtmux
+import shlex
 
 from src.core.database import DatabaseManager, Agent, Task, AgentLog, BoardConfig, get_db
 from src.interfaces import get_cli_agent, LLMProviderInterface
@@ -204,6 +205,11 @@ class AgentManager:
                 system_prompt=system_prompt,
                 task_id=task.id,
             )
+
+            # Wrap command with runtime wrapper for control channel
+            wrapper_path = self.config.project_root / "src" / "agents" / "runtime_wrapper.py"
+            quoted_cmd = shlex.quote(launch_command)
+            launch_command = f"python3 {wrapper_path} --agent-id {agent_id} --work-item-id {task.id} --cmd {quoted_cmd}"
 
             # Send launch command to tmux
             pane = tmux_session.attached_window.attached_pane

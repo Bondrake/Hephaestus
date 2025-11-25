@@ -82,6 +82,32 @@ class BuildStatus(str, Enum):
     UNKNOWN = "unknown"
 
 
+class AuthorityLevel(str, Enum):
+    """Level of authority required for an action."""
+    AUTO_APPLY = "auto_apply"
+    DUAL_CONTROL = "dual_control"
+    HUMAN_REQUIRED = "human_required"
+
+
+class SuggestedAction(str, Enum):
+    """Actions that can be recommended."""
+    PAUSE = "pause"
+    TERMINATE = "terminate"
+    MERGE = "merge"
+    REVERT_ALL = "revert_all"
+    RUN_TESTS = "run_tests"
+    LINK_TICKET = "link_ticket"
+    ROLLBACK = "rollback"
+    CONTINUE = "continue"
+
+
+class SystemActionKind(str, Enum):
+    """Actions for system-level interventions."""
+    PAUSE = "pause"
+    QUEUE = "queue"
+    RESCHEDULE = "reschedule"
+    ALERT = "alert"
+
 # === Core Objects ===
 
 class WorkItem(BaseModel):
@@ -225,3 +251,146 @@ class TrajectorySnapshot(BaseModel):
     dependencies: List[Dependency]
     sensors: SensorsSnapshot
     phase_contract: PhaseContract
+
+
+# === Analysis ===
+
+class LLMAnalysis(BaseModel):
+    """Structured output from LLM analysis."""
+    is_aligned: bool
+    alignment_score: float  # 0.0 to 1.0
+    confidence: float  # 0.0 to 1.0
+    issues: List[str]
+    recommendations: List[str]
+    reasoning: str
+
+
+class Recommendation(BaseModel):
+    """A proposed intervention."""
+    kind: SuggestedAction
+    target_ids: List[str]
+    reason: str
+    evidence: Any  # Flexible evidence payload
+    confidence: float
+    suggested_action: SuggestedAction  # Alias for kind to match design doc usage
+
+
+class ApprovedAction(BaseModel):
+    """An action approved for execution."""
+    recommendation: Recommendation
+    authority: AuthorityLevel
+    approved_at: datetime = Field(default_factory=datetime.utcnow)
+    approver_id: str  # "policy_engine" or user_id
+
+
+class PolicyConfig(BaseModel):
+    """Configuration for the policy engine."""
+    max_auto_terminations_per_hour: int = 0
+    require_human_for_high_risk: bool = True
+    min_confidence_for_auto: float = 0.8
+
+
+class WorkItemFinding(BaseModel):
+    """Result of supervisor analysis."""
+    work_item_id: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Deterministic checks
+    is_blocked: bool
+    blocker_reason: Optional[str] = None
+    
+    # LLM analysis
+    llm_analysis: Optional[LLMAnalysis] = None
+    
+    # Synthesis
+    needs_intervention: bool
+    intervention_reason: Optional[str] = None
+    suggested_action: Optional[str] = None  # Deprecated in favor of recommendations
+    
+    # Recommendations
+    recommendations: List[Recommendation] = Field(default_factory=list)
+    snapshot: Optional[TrajectorySnapshot] = None  # Reference to source snapshot
+    recommendations: List[Recommendation] = Field(default_factory=list)
+    snapshot: Optional[TrajectorySnapshot] = None  # Reference to source snapshot
+
+
+# === Project Level ===
+
+class ResourceMap(BaseModel):
+    """Map of resources to work items."""
+    # file_path -> list of (work_item_id, mode)
+    # This is a simplified view; actual implementation might be more complex
+    file_access: Dict[str, List[Dict[str, str]]] = Field(default_factory=dict)
+
+    def files_for(self, work_item: WorkItem) -> List[str]:
+        """Get files accessed by a work item."""
+        files = []
+        for file, accesses in self.file_access.items():
+            for access in accesses:
+                if access["work_item_id"] == work_item.id:
+                    files.append(file)
+        return files
+
+    def access_mode(self, work_item: WorkItem, file: str) -> str:
+        """Get access mode for a file."""
+        for access in self.file_access.get(file, []):
+            if access["work_item_id"] == work_item.id:
+                return access["mode"]
+        return "read" # Default
+
+
+class ContentionMap(BaseModel):
+    """Map of resource contention."""
+    # file_path -> list of (work_item_id, mode)
+    access_log: Dict[str, List[Dict[str, str]]] = Field(default_factory=dict)
+    conflicts: Dict[str, List[str]] = Field(default_factory=dict) # file -> list of work_item_ids
+
+    def add(self, file: str, work_item_id: str, mode: str):
+        """Register access."""
+        if file not in self.access_log:
+            self.access_log[file] = []
+        self.access_log[file].append({"work_item_id": work_item_id, "mode": mode})
+
+    def mark_conflict(self, file: str, writers: List[Dict[str, str]]):
+        """Mark a conflict."""
+        self.conflicts[file] = [w["work_item_id"] for w in writers]
+        
+    def items(self):
+        return self.access_log.items()
+
+
+class Overlap(BaseModel):
+    """Detected overlap between work items."""
+    work_item_1: str
+    work_item_2: str
+    score: float
+    file_overlap: int
+    git_conflicts: bool
+    scope_overlap: float
+
+
+class ProjectMetrics(BaseModel):
+    """Health metrics for the project."""
+    wip_count: int
+    blocked_count: int
+    throughput_7d: float
+    reopen_rate: float
+
+
+class SystemRecommendation(BaseModel):
+    """Recommendation for system-level action."""
+    kind: SystemActionKind
+    target_ids: List[str]
+    reason: str
+    evidence: Any
+    confidence: float
+
+
+class ProjectFinding(BaseModel):
+    """Result of project-level analysis."""
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    metrics: ProjectMetrics
+    contention_map: ContentionMap
+    overlaps: List[Overlap]
+    violations: List[str]
+    recommendations: List[SystemRecommendation]

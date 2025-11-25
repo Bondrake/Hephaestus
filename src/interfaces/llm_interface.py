@@ -6,6 +6,8 @@ import json
 import logging
 import asyncio
 from src.monitoring.models import GuardianTrajectoryAnalysis, ConductorSystemAnalysis
+from src.core.models import LLMAnalysis
+
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +138,14 @@ class LLMProviderInterface(ABC):
                 - progress_estimate: Estimated progress percentage
                 - last_claude_message_marker: Marker for next cycle
         """
+        pass
+
+    @abstractmethod
+    async def analyze_trajectory(
+        self,
+        context: Dict[str, Any],
+    ) -> LLMAnalysis:
+        """Analyze work item trajectory (new supervisor)."""
         pass
 
     @abstractmethod
@@ -435,6 +445,52 @@ IDs: Agent={task.get('agent_id', 'unknown')} | Task={task.get('id', 'unknown')}"
                     return fallback.model_dump()
                 await asyncio.sleep(1)  # Brief delay before retry
 
+    async def analyze_trajectory(
+        self,
+        context: Dict[str, Any],
+    ) -> LLMAnalysis:
+        """Analyze work item trajectory using structured output."""
+        prompt = f"""Analyze the trajectory of this work item.
+        
+        Context:
+        {json.dumps(context, indent=2, default=str)}
+        
+        Determine if the work is aligned with the phase contract and constraints.
+        Identify any issues and provide recommendations.
+        """
+        
+        for attempt in range(3):
+            try:
+                kwargs = {
+                    "model": self.model,
+                    "messages": [
+                        {"role": "system", "content": "You are a supervisor analyzing work item trajectory."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "response_format": LLMAnalysis,
+                }
+
+                if "gpt-4o" in self.model or "gpt-5" in self.model or "o1" in self.model:
+                    kwargs["max_completion_tokens"] = 16000
+                else:
+                    kwargs["max_tokens"] = 16000
+
+                response = await self.client.beta.chat.completions.parse(**kwargs)
+                return response.choices[0].message.parsed
+
+            except Exception as e:
+                logger.error(f"Failed to analyze trajectory (attempt {attempt + 1}/3): {e}")
+                if attempt == 2:
+                    return LLMAnalysis(
+                        is_aligned=True,
+                        alignment_score=0.5,
+                        confidence=0.0,
+                        issues=["Analysis failed"],
+                        recommendations=[],
+                        reasoning=f"Analysis failed: {str(e)}"
+                    )
+                await asyncio.sleep(1)
+
     async def analyze_system_coherence(
         self,
         guardian_summaries: List[Dict[str, Any]],
@@ -670,6 +726,63 @@ IDs: Agent={task.get('agent_id', 'unknown')} | Task={task.get('id', 'unknown')}"
             "coordination_needs": [],
             "system_summary": "Using default coherence analysis"
         }
+
+    async def analyze_trajectory(
+        self,
+        context: Dict[str, Any],
+    ) -> LLMAnalysis:
+        """Analyze work item trajectory."""
+        prompt = f"""Analyze the trajectory of this work item.
+        
+        Context:
+        {json.dumps(context, indent=2, default=str)}
+        
+        Determine if the work is aligned with the phase contract and constraints.
+        Identify any issues and provide recommendations.
+        
+        Return a JSON object with the following structure:
+        {{
+            "is_aligned": boolean,
+            "alignment_score": float (0.0-1.0),
+            "confidence": float (0.0-1.0),
+            "issues": [string],
+            "recommendations": [string],
+            "reasoning": string
+        }}
+        """
+        
+        try:
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=4096,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            content = response.content[0].text
+            
+            # Extract JSON
+            import re
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if json_match:
+                data = json.loads(json_match.group())
+                return LLMAnalysis(**data)
+            else:
+                raise ValueError("No JSON found in response")
+                
+        except Exception as e:
+            logger.error(f"Failed to analyze trajectory with {self.model}: {e}")
+            return LLMAnalysis(
+                is_aligned=True,
+                alignment_score=0.5,
+                confidence=0.0,
+                issues=["Analysis failed"],
+                recommendations=[],
+                reasoning=f"Analysis failed: {str(e)}"
+            )
+
+
 
     def get_model_name(self) -> str:
         """Get model name."""

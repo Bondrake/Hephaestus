@@ -47,7 +47,8 @@ async def test_create_task():
             task_data = {
                 "task_description": "Write unit tests for the authentication module",
                 "done_definition": "All auth functions have >90% test coverage with passing tests",
-                "priority": "medium"
+                "priority": "medium",
+                "ai_agent_id": TEST_AGENT_ID
             }
 
             headers = {
@@ -88,7 +89,8 @@ async def test_save_memory():
                 "memory_content": "Always validate user input on both client and server side to prevent XSS attacks",
                 "memory_type": "learning",
                 "tags": ["security", "validation", "xss"],
-                "related_files": ["src/validators.js", "src/middleware/auth.js"]
+                "related_files": ["src/validators.js", "src/middleware/auth.js"],
+                "ai_agent_id": TEST_AGENT_ID
             }
 
             headers = {
@@ -189,13 +191,18 @@ async def test_agent_status():
                 assert response.status == 200, f"Expected 200, got {response.status}"
                 data = await response.json()
 
-                agents = data.get("agents", [])
+                # Handle list response (new API) or dict response (old API)
+                if isinstance(data, list):
+                    agents = data
+                else:
+                    agents = data.get("agents", [])
+
                 print(f"   Active agents: {len(agents)}")
 
                 for agent in agents[:3]:  # Show first 3 agents
                     print(f"      - Agent {agent.get('id', 'unknown')[:8]}...")
                     print(f"        Status: {agent.get('status')}")
-                    print(f"        Task: {agent.get('current_task', {}).get('description', 'None')[:50]}...")
+                    print(f"        Task: {agent.get('current_task_id', 'None')[:50]}...")
 
                 print(f"   ✅ Agent status retrieved successfully")
                 return True
@@ -215,7 +222,22 @@ async def test_task_progress():
                 assert response.status == 200, f"Expected 200, got {response.status}"
                 data = await response.json()
 
-                tasks = data.get("tasks", {})
+                # Handle list response (new API) or dict response (old API)
+                if isinstance(data, list):
+                    tasks_list = data
+                    # Calculate summary stats manually
+                    tasks = {
+                        "pending": len([t for t in tasks_list if t.get("status") == "pending"]),
+                        "assigned": len([t for t in tasks_list if t.get("status") == "assigned"]),
+                        "in_progress": len([t for t in tasks_list if t.get("status") == "in_progress"]),
+                        "completed": len([t for t in tasks_list if t.get("status") == "completed"]),
+                        "failed": len([t for t in tasks_list if t.get("status") == "failed"]),
+                    }
+                    recent = tasks_list
+                else:
+                    tasks = data.get("tasks", {})
+                    recent = data.get("recent_tasks", [])
+
                 print(f"   Task summary:")
                 print(f"      Pending: {tasks.get('pending', 0)}")
                 print(f"      Assigned: {tasks.get('assigned', 0)}")
@@ -223,7 +245,6 @@ async def test_task_progress():
                 print(f"      Completed: {tasks.get('completed', 0)}")
                 print(f"      Failed: {tasks.get('failed', 0)}")
 
-                recent = data.get("recent_tasks", [])
                 if recent:
                     print(f"   Recent tasks:")
                     for task in recent[:3]:
@@ -246,7 +267,12 @@ async def test_sse_connection():
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(f"{BASE_URL}/sse") as response:
                 assert response.status == 200, f"Expected 200, got {response.status}"
-                assert response.headers.get("Content-Type") == "text/event-stream"
+                
+                content_type = response.headers.get("Content-Type")
+                if not content_type or not content_type.startswith("text/event-stream"):
+                    print(f"   ⚠️  Unexpected Content-Type: {content_type}")
+                    
+                assert content_type and content_type.startswith("text/event-stream")
 
                 print(f"   ✅ SSE endpoint accessible")
                 print(f"   Content-Type: {response.headers.get('Content-Type')}")
@@ -273,7 +299,9 @@ async def test_sse_connection():
         print(f"   ✅ SSE connection established (timed out as expected)")
         return True
     except Exception as e:
-        print(f"   ❌ SSE connection failed: {e}")
+        print(f"   ❌ SSE connection failed: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 

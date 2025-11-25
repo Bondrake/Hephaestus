@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # Qdrant vector database
@@ -22,7 +22,7 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
       - ./docs:/app/docs
-      - /var/run/docker.sock:/var/run/docker.sock  # For tmux session management
+      - /var/run/docker.sock:/var/run/docker.sock # For tmux session management
     environment:
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -36,11 +36,11 @@ services:
       - qdrant
     restart: unless-stopped
 
-  # Hephaestus Monitoring Loop
-  hephaestus-monitor:
+  # Hephaestus Supervision Service
+  hephaestus-supervisor:
     build: .
-    container_name: hephaestus-monitor
-    command: python run_monitor.py
+    container_name: hephaestus-supervisor
+    command: python run_supervisor.py
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
@@ -53,7 +53,7 @@ services:
       - LLM_MODEL=${LLM_MODEL:-gpt-4-turbo-preview}
       - DATABASE_PATH=/app/data/hephaestus.db
       - QDRANT_URL=http://qdrant:6333
-      - MONITORING_INTERVAL_SECONDS=${MONITORING_INTERVAL_SECONDS:-60}
+      - MAX_AUTO_TERMINATIONS_PER_HOUR=${MAX_AUTO_TERMINATIONS_PER_HOUR:-5}
     depends_on:
       - qdrant
       - hephaestus-server

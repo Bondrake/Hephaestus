@@ -70,3 +70,5 @@ frontend/node_modules/
 
 # Reports
 STATUS_REPORT.md
+tmp/
+.hephaestus/

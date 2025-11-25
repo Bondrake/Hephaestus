@@ -154,17 +154,20 @@ The workflow adapts in real-time based on what agents actually discover, not wha
 Here's why this is "semi-structured" and why that matters:
 
 **Fully structured workflows** (traditional frameworks):
+
 - ❌ Require predefined prompts for every scenario
 - ❌ Can branch/loop, but need fixed instructions for each path
 - ❌ Must anticipate all discoveries upfront
 
 **Fully unstructured agents** (chaos):
+
 - ❌ No coordination
 - ❌ Duplicate work
 - ❌ Contradictory changes
 - ❌ No clear success criteria
 
 **Semi-structured (Hephaestus)**:
+
 - ✅ **Phase definitions** provide work type structure and guidelines
 - ✅ **Agents write task descriptions** dynamically based on discoveries
 - ✅ **Kanban tickets** coordinate work with blocking relationships
@@ -172,33 +175,72 @@ Here's why this is "semi-structured" and why that matters:
 - ✅ Workflow adapts to what agents actually find, not what you predicted
 
 You get **structure where it matters**:
+
 - Phase types define what kind of work is happening
 - Done definitions set clear completion criteria
 - Guardian validates alignment with phase instructions
 - Tickets track dependencies and prevent chaos
 
 And **flexibility where you need it**:
+
 - Agents create detailed task descriptions on the fly
 - No need to predefine every possible branch
 - Discoveries drive workflow expansion in real-time
 - New work types emerge as agents explore
 
+- New work types emerge as agents explore
+
+## 🏗️ Architecture: Work-Centric Supervision
+
+Hephaestus uses a continuous supervision loop to manage agent autonomy safely. Instead of just "monitoring" agents, it actively supervises the **work** they are doing.
+
+#### 1. The Supervisor Loop
+
+A continuous service (`run_supervisor.py`) that runs alongside the MCP server. It wakes up periodically to:
+
+-   **Sense**: Gather data from Git, CI/CD, and the filesystem.
+-   **Analyze**: Use LLMs to evaluate the "trajectory" of each work item.
+-   **Decide**: Apply policy rules (e.g., "High risk changes need human approval").
+-   **Act**: Send control signals to agents (Pause, Rollback, Redirect).
+
+### 2. Trajectory Analysis
+
+Agents don't just have a "state" (Running/Failed); they have a **trajectory**.
+
+-   Is the agent modifying files it shouldn't?
+-   Is it stuck in a loop?
+-   Is the code it's writing aligned with the task requirements?
+
+The supervisor builds a `TrajectorySnapshot` and asks an LLM: *"Given the history, where is this agent heading?"*
+
+### 3. Policy Engine
+
+Not all interventions are equal.
+
+-   **Low Risk**: Auto-apply fixes (e.g., "You forgot to run formatting").
+-   **High Risk**: Hold for human approval (e.g., "Agent wants to delete the database").
+
+### 4. Control Channel
+
+A dedicated communication channel that allows the supervisor to intervene *during* an agent's execution. It can force an agent to stop, revert changes, or change its plan.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- **Python 3.12** (Recommended) - Python 3.14+ has known compatibility issues with SQLAlchemy
-- **Micromamba** (Recommended) - For robust environment management
-- **tmux** - Terminal multiplexer for agent isolation
-- **Git** - Your project must be a git repository
-- **Docker** - Required for running Qdrant vector store
-- **Node.js & npm** - For the frontend UI
-- **Claude Code**, **OpenCode**, **Droid**, or **Codex** - CLI AI tool that agents run inside
-- **API Keys**: OpenAI, OpenRouter, Anthropic (also supports: Azure OpenAI, Google AI Studio - see [LLM Configuration](https://ido-levi.github.io/Hephaestus/docs/getting-started/quick-start#llm-configuration))
+-   **Python 3.12** (Recommended) - Python 3.14+ has known compatibility issues with SQLAlchemy
+-   **Micromamba** (Recommended) - For robust environment management
+-   **tmux** - Terminal multiplexer for agent isolation
+-   **Git** - Your project must be a git repository
+-   **Docker** - Required for running Qdrant vector store
+-   **Node.js & npm** - For the frontend UI
+-   **Claude Code**, **OpenCode**, **Droid**, or **Codex** - CLI AI tool that agents run inside
+-   **API Keys**: OpenAI, OpenRouter, Anthropic (also supports: Azure OpenAI, Google AI Studio - see [LLM Configuration](https://ido-levi.github.io/Hephaestus/docs/getting-started/quick-start#llm-configuration))
 
-### 🔧 Troubleshooting
+#### 🔧 Troubleshooting
 
-**Python Compatibility**
+##### Python Compatibility
+
 If you encounter `TypingOnly` errors with SQLAlchemy, ensure you are using Python 3.12. We recommend using `micromamba` to manage your environment:
 ```bash
 brew install micromamba
@@ -230,6 +272,31 @@ This script checks:
 - ✅ Python and frontend dependencies
 
 The script provides a color-coded report showing what's set up and what needs attention.
+
+### 🚀 Deployment
+
+To deploy the full Hephaestus system (MCP Server, Qdrant, and Supervision Service) using Docker:
+
+1.  **Configure Environment**:
+    Copy `.env.example` to `.env` and fill in your API keys.
+    ```bash
+    cp .env.example .env
+    ```
+
+2.  **Run Deployment Script**:
+    ```bash
+    ./scripts/deploy.sh
+    ```
+
+    This will:
+    - Build the Docker images
+    - Start the MCP Server, Qdrant, and Supervision Service
+    - Ensure all services are healthy
+
+3.  **Verify Deployment**:
+    - MCP Server: http://localhost:8000
+    - Qdrant: http://localhost:6333
+    - Logs: `./logs/`
 
 ### Get Started in 10 Minutes
 
