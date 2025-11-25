@@ -1010,7 +1010,6 @@ class DatabaseManager:
 
 # Context manager for database sessions
 from contextlib import contextmanager
-from sqlalchemy.sql import text
 
 
 @contextmanager

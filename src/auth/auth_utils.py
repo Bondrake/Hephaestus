@@ -3,18 +3,13 @@
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 import hashlib
 import secrets
 import logging
 from .auth_config import get_auth_config
 
 logger = logging.getLogger(__name__)
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# Get configuration
 config = get_auth_config()
 
 
@@ -27,7 +22,11 @@ def hash_password(password: str) -> str:
     Returns:
         Hashed password string
     """
-    return pwd_context.hash(password)
+
+    pwd_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -40,7 +39,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if passwords match, False otherwise
     """
-    return pwd_context.verify(plain_password, hashed_password)
+
+    pwd_bytes = plain_password.encode('utf-8')
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(pwd_bytes, hashed_bytes)
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
