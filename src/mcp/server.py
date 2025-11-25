@@ -770,6 +770,11 @@ async def startup_event():
     server_state.background_queue_processor_task = asyncio.create_task(background_queue_processor())
     logger.info("Background queue processor task created")
 
+    # Start control channel poller
+    logger.info("Starting control channel poller...")
+    server_state.control_channel_poller_task = asyncio.create_task(control_channel_poller())
+    logger.info("Control channel poller task created")
+
     logger.info("Server started successfully")
 
 
@@ -789,9 +794,55 @@ async def shutdown_event():
             logger.warning("Background queue processor did not stop gracefully, cancelling...")
             server_state.background_queue_processor_task.cancel()
 
+    # Stop control channel poller
+    if hasattr(server_state, "control_channel_poller_task") and server_state.control_channel_poller_task:
+        server_state.control_channel_poller_task.cancel()
+        try:
+            await server_state.control_channel_poller_task
+        except asyncio.CancelledError:
+            logger.info("Control channel poller stopped")
+
     # Close all WebSocket connections
     for ws in server_state.active_websockets:
         await ws.close()
+
+
+async def control_channel_poller():
+    """Poll control channel for steering events."""
+    from src.core.control import SteeringEvent
+    from pathlib import Path
+    
+    control_dir = Path("./tmp/control")
+    control_dir.mkdir(parents=True, exist_ok=True)
+    
+    logger.info(f"Polling control channel at {control_dir}")
+    
+    while not server_state.shutdown_event.is_set():
+        try:
+            # Check for control files
+            for control_file in control_dir.glob("control_*.json"):
+                try:
+                    # Parse work_item_id from filename: control_{work_item_id}.json
+                    work_item_id = control_file.stem.replace("control_", "")
+                    
+                    # Read event
+                    with open(control_file, "r") as f:
+                        event_data = json.load(f)
+                        event = SteeringEvent(**event_data)
+                    
+                    # Handle event
+                    await server_state.agent_manager.handle_steering_event(work_item_id, event)
+                    
+                    # Remove processed file (or move to processed folder)
+                    control_file.unlink()
+                    
+                except Exception as e:
+                    logger.error(f"Error processing control file {control_file}: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error in control channel poller: {e}")
+            
+        await asyncio.sleep(1.0)
 
 
 def verify_agent_id(agent_id: str = Header(None, alias="X-Agent-ID")) -> str:

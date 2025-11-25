@@ -44,6 +44,10 @@ class AgentManager:
 
         # Initialize worktree manager for agent isolation
         self.worktree_manager = WorktreeManager(db_manager)
+        
+        # Initialize Control Channel
+        from src.core.control import ControlChannel
+        self.control_channel = ControlChannel(Path("./tmp/control")) # TODO: Configurable path
 
     async def create_agent_for_task(
         self,
@@ -1373,5 +1377,62 @@ REMEMBER:
                 Agent.status != "terminated"
             ).all()
             return agents
+        finally:
+            session.close()
+
+    async def handle_steering_event(self, work_item_id: str, event: Any) -> None:
+        """Handle a steering event for a specific work item.
+        
+        Args:
+            work_item_id: ID of the work item
+            event: SteeringEvent object
+        """
+        logger.info(f"Handling steering event {event.id} for work item {work_item_id}")
+        
+        # Find active agent for this work item
+        session = self.db_manager.get_session()
+        try:
+            task = session.query(Task).filter(Task.id == work_item_id).first()
+            if not task or not task.assigned_agent_id:
+                logger.warning(f"No active agent found for work item {work_item_id}")
+                return
+                
+            agent_id = task.assigned_agent_id
+            
+            # Send message to agent via tmux
+            message = f"\n\n[SUPERVISOR INTERVENTION]\nReason: {event.reason_code}\nMessage: {event.parameters.get('message', '')}\nRequired Action: {event.required_action}\n"
+            
+            try:
+                # Use _send_to_tmux helper if available, or direct tmux server access
+                # Assuming standard tmux session naming: "agent-{agent_id}"
+                session_name = f"agent-{agent_id}"
+                if self.tmux_server.has_session(session_name):
+                    tmux_session = self.tmux_server.find_where({"session_name": session_name})
+                    if tmux_session:
+                        window = tmux_session.attached_window
+                        pane = window.attached_pane
+                        pane.send_keys(message)
+                        logger.info(f"Sent steering message to agent {agent_id}")
+                else:
+                    logger.warning(f"Tmux session {session_name} not found")
+            except Exception as e:
+                logger.error(f"Failed to send message to tmux: {e}")
+                
+            # Acknowledge event
+            from src.core.control import Acknowledgment, AckStatus
+            ack = Acknowledgment(
+                event_id=event.id,
+                status=AckStatus.ACKNOWLEDGED,
+                message="Message sent to agent",
+                timestamp=datetime.utcnow()
+            )
+            
+            # Write ack file (using private method for now, or expose public one)
+            ack_path = self.control_channel._get_ack_file_path(event.id)
+            with open(ack_path, "w") as f:
+                f.write(ack.model_dump_json(indent=2))
+                
+        except Exception as e:
+            logger.error(f"Error handling steering event: {e}")
         finally:
             session.close()
