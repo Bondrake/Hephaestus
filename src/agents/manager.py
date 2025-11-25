@@ -3,10 +3,12 @@
 import uuid
 import asyncio
 import logging
+import sys
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import libtmux
 import shlex
+import os
 
 from src.core.database import DatabaseManager, Agent, Task, AgentLog, BoardConfig, get_db
 from src.interfaces import get_cli_agent, LLMProviderInterface
@@ -31,7 +33,14 @@ class AgentManager:
         self.llm_provider = llm_provider
         self.phase_manager = phase_manager
         self.config = get_config()
-        self.tmux_server = libtmux.Server()
+        
+        # Use MockTmuxServer for stub CLI (E2E testing)
+        if os.environ.get("HEPHAESTUS_CLI_TOOL") == "stub":
+            logger.info("Using MockTmuxServer for stub CLI")
+            from src.mocks.mock_tmux import MockTmuxServer
+            self.tmux_server = MockTmuxServer()
+        else:
+            self.tmux_server = libtmux.Server()
 
         # Initialize worktree manager for agent isolation
         self.worktree_manager = WorktreeManager(db_manager)
@@ -209,7 +218,7 @@ class AgentManager:
             # Wrap command with runtime wrapper for control channel
             wrapper_path = self.config.project_root / "src" / "agents" / "runtime_wrapper.py"
             quoted_cmd = shlex.quote(launch_command)
-            launch_command = f"python3 {wrapper_path} --agent-id {agent_id} --work-item-id {task.id} --cmd {quoted_cmd}"
+            launch_command = f"{sys.executable} {wrapper_path} --agent-id {agent_id} --work-item-id {task.id} --cmd {quoted_cmd}"
 
             # Send launch command to tmux
             pane = tmux_session.attached_window.attached_pane
@@ -308,7 +317,9 @@ class AgentManager:
             return AgentInfo(agent_id_to_return)
 
         except Exception as e:
+            import traceback
             logger.error(f"Failed to create agent: {e}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             # Clean up on failure
             try:
                 # Kill tmux session if it exists

@@ -452,6 +452,13 @@ CLI_AGENTS = {
     "swarm": SwarmCodeAgent,
 }
 
+# Register StubCLIAgent if available (for testing)
+try:
+    from src.mocks.stub_cli_agent import StubCLIAgent
+    CLI_AGENTS["stub"] = StubCLIAgent
+except ImportError:
+    pass
+
 
 def get_cli_agent(agent_type: str) -> CLIAgentInterface:
     """Get a CLI agent instance by type.

@@ -179,6 +179,12 @@ class Config:
         if os.getenv("QDRANT_COLLECTION_PREFIX"):
             self.qdrant_collection_prefix = os.getenv("QDRANT_COLLECTION_PREFIX")
 
+        # Path settings
+        if os.getenv("HEPHAESTUS_PHASES_FOLDER"):
+            self.phases_folder = os.getenv("HEPHAESTUS_PHASES_FOLDER")
+        if os.getenv("HEPHAESTUS_PROJECT_ROOT"):
+            self.project_root = Path(os.getenv("HEPHAESTUS_PROJECT_ROOT"))
+
         # MCP settings
         if os.getenv("MCP_HOST"):
             self.mcp_host = os.getenv("MCP_HOST")

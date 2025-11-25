@@ -824,10 +824,18 @@ class DatabaseManager:
     def __init__(self, database_path: str = "hephaestus.db"):
         """Initialize database connection."""
         self.database_path = database_path
+        
+        # Use StaticPool only for in-memory databases
+        connect_args = {"check_same_thread": False}
+        poolclass = None
+        
+        if database_path == ":memory:":
+            poolclass = StaticPool
+        
         self.engine = create_engine(
             f"sqlite:///{database_path}",
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
+            connect_args=connect_args,
+            poolclass=poolclass,
             echo=False,
         )
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)

@@ -52,6 +52,17 @@ if config.enable_cors:
         allow_headers=["*"],
     )
 
+from fastapi.exceptions import RequestValidationError
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Log validation errors for easier debugging."""
+    logger.error(f"Validation error for request {request.method} {request.url}: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": exc.body},
+    )
+
 
 # Request/Response Models
 class CreateTaskRequest(BaseModel):
@@ -580,7 +591,7 @@ class ServerState:
         # Initialize database
         self.db_manager = DatabaseManager(str(config.database_path))
         self.db_manager.create_tables()
-
+        
         # Initialize vector store
         self.vector_store = VectorStoreManager(
             qdrant_url=config.qdrant_url,
@@ -3879,6 +3890,7 @@ async def get_task_progress(
                 "completed_at": task.completed_at.isoformat() if task.completed_at else None,
                 "phase_id": task.phase_id,
                 "workflow_id": task.workflow_id,
+                "ticket_id": task.ticket_id,
             }
 
             # Add phase information if available

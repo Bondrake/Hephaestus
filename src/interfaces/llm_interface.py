@@ -809,6 +809,21 @@ def get_llm_provider() -> LLMProviderInterface:
     logger.info("🔧 Initializing LLM Provider System")
     logger.info("="*60)
 
+    # Check for stub provider (E2E testing)
+    import os
+    if os.environ.get("HEPHAESTUS_LLM_PROVIDER") == "stub":
+        # Import dynamically to avoid circular imports in production code if possible
+        try:
+            from ..mocks.stub_llm import StubLLMProvider
+            logger.info("✅ Using STUB LLM provider (for testing)")
+            logger.info("="*60)
+            return StubLLMProvider()
+        except ImportError:
+            logger.error("❌ StubLLMProvider not found. Ensure 'src.mocks.stub_llm' is accessible.")
+            # Fallback or error - for now, let's raise an error if stub is explicitly requested but not found
+            raise RuntimeError("Stub LLM provider requested but not found.")
+
+
     # Check if we have multi-provider configuration
     try:
         llm_config = get_llm_config()
