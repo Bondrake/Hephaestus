@@ -776,6 +776,7 @@ class WorktreeManager:
             logger.info(f"[GIT-MERGE:{agent_id}]   - Untracked files: {len(worktree_repo.untracked_files)}")
 
             # ========== STEP 6: COMMIT UNCOMMITTED CHANGES ==========
+            final_commit = worktree_repo.head.commit
             if worktree_repo.is_dirty() or worktree_repo.untracked_files:
                 logger.info(f"[GIT-MERGE:{agent_id}] STEP 6: Committing uncommitted changes in worktree")
                 logger.info(f"[GIT-MERGE:{agent_id}]   Running 'git add -A'")
@@ -803,8 +804,8 @@ class WorktreeManager:
                 insertions=final_commit.stats.total['insertions'],
                 deletions=final_commit.stats.total['deletions']
             )
-            session.add(commit_record)
-            session.commit()
+                session.add(commit_record)
+                session.commit()
 
             # ========== STEP 7: MERGE TO TARGET ==========
             logger.info(f"[GIT-MERGE:{agent_id}] STEP 7: Merging worktree branch into {target_branch}")

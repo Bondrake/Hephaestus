@@ -87,7 +87,7 @@ def test_full_ticket_lifecycle(api_client: httpx.Client):
             time.sleep(retry_interval)
             response = api_client.get(f"/api/tickets/{ticket_id}")
             ticket_data = response.json()
-            status = ticket_data["status"]
+            status = ticket_data["ticket"]["status"]
             print(f"Poll {i+1}/{max_retries}: Ticket status is '{status}'")
             
             if status == "done":

@@ -8,7 +8,9 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import libtmux
 import shlex
+import shlex
 import os
+from pathlib import Path
 
 from src.core.database import DatabaseManager, Agent, Task, AgentLog, BoardConfig, get_db
 from src.interfaces import get_cli_agent, LLMProviderInterface
@@ -854,7 +856,7 @@ REMEMBER:
                     if self.tmux_server.has_session(agent.tmux_session_name):
                         # Find session by iteration (avoid deprecated get_by_id)
                         tmux_session = None
-                        for tmux_sess in self.tmux_server.sessions:
+                        for tmux_sess in self.tmux_server.sessions.values():
                             if tmux_sess.name == agent.tmux_session_name:
                                 tmux_session = tmux_sess
                                 break

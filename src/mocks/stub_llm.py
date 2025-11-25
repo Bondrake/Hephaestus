@@ -26,7 +26,7 @@ class StubLLMProvider(LLMProviderInterface):
 
     async def generate_embedding(self, text: str) -> List[float]:
         # Return a fixed size vector (OpenAI size)
-        return [0.1] * 1536
+        return [0.1] * 3072
 
     async def analyze_agent_state(
         self,

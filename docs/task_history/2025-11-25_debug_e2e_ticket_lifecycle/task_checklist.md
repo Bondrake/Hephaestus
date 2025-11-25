@@ -1,0 +1,28 @@
+```
+- [x] Debug E2E ticket lifecycle test
+    - [x] Fix `KeyError: 'status'` in test
+    - [x] Fix `QdrantClient` attribute error
+    - [x] Fix vector dimension mismatch (3072 vs 1536)
+    - [x] Fix `UnboundLocalError` in worktree manager
+    - [x] Fix tmux session iteration error
+    - [x] Fix database constraint errorches
+    - [x] Verify successful build
+    - [x] Run interactive walkthrough
+    - [x] Verify server starts and serves UI
+    - [x] Verify user can access dashboard
+    - [x] Verify ticket creation and updates
+        - [x] Verify `stub_cli.py` receives input <!-- id: 2 -->
+        - [x] Pass `test_full_ticket_lifecycle` <!-- id: 3 -->
+- [x] Improve Debuggability <!-- id: 4 -->
+    - [x] Server: Log `RequestValidationError` details <!-- id: 5 -->
+    - [x] Client: Log response body in `stub_cli.py` on error <!-- id: 6 -->
+    - [x] Test: Clear `hephaestus_server.log` in `conftest.py` <!-- id: 7 -->
+    - [x] Agent: Restore traceback logging in `AgentManager` <!-- id: 8 -->
+- [x] Fix Dangling Branches <!-- id: 9 -->
+    - [x] Implement `cleanup_agent_worktree` in `WorktreeManager` <!-- id: 10 -->
+    - [x] Call cleanup in `AgentManager.terminate_agent` <!-- id: 11 -->
+    - [x] Add startup sweeper in `server.py` <!-- id: 12 -->
+- [x] Complete Work-Centric Supervision Refactor <!-- id: 13 -->
+    - [x] Run and fix QA tests (`tests/qa/`) <!-- id: 14 -->
+    - [x] Implement `ProjectSupervisor` stubs (git conflicts, metrics) <!-- id: 15 -->
+    - [x] Verify `SteeringEvent` integration in `AgentManager` <!-- id: 16 -->

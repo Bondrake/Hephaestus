@@ -70,7 +70,7 @@ agents:
 vector_store:
   qdrant_url: http://localhost:6333
   collection_prefix: hephaestus
-  embedding_dimension: 1536
+  embedding_dimension: 3072
 monitoring:
   enabled: true
   interval_seconds: 60

@@ -192,14 +192,14 @@ class VectorStoreManager:
                 qdrant_filter = Filter(must=conditions)
 
         try:
-            results = self.client.search(
+            results = self.client.query_points(
                 collection_name=full_name,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=limit,
                 query_filter=qdrant_filter,
                 score_threshold=score_threshold,
                 with_payload=True,
-            )
+            ).points
 
             return [
                 {

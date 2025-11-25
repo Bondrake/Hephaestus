@@ -11,6 +11,20 @@ SERVER_PORT = 8001
 SERVER_URL = f"http://localhost:{SERVER_PORT}"
 TEST_DB_PATH = "test_e2e.db"
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--interactive", action="store_true", default=False, help="Enable interactive mode for walkthroughs"
+    )
+
+@pytest.fixture
+def interactive_pause(request):
+    """Pause execution and wait for user input if --interactive is set."""
+    def _pause(message: str):
+        if request.config.getoption("--interactive"):
+            print(f"\n\n[INTERACTIVE] {message}")
+            input("Press Enter to continue...")
+    return _pause
+
 @pytest.fixture(scope="session")
 def e2e_server():
     """Start the server as a subprocess for E2E testing."""
@@ -21,9 +35,12 @@ def e2e_server():
     env["DATABASE_PATH"] = TEST_DB_PATH
     env["HEPHAESTUS_TEST_DB"] = TEST_DB_PATH
     env["DEFAULT_CLI_TOOL"] = "stub"
-    env["HEPHAESTUS_LLM_PROVIDER"] = "stub" # We need to support this in get_llm_provider
-    os.environ["HEPHAESTUS_PHASES_FOLDER"] = "/tmp"
-    os.environ["HEPHAESTUS_PROJECT_ROOT"] = os.getcwd()
+    env["HEPHAESTUS_LLM_PROVIDER"] = "stub"
+    env["LLM_PROVIDER"] = "stub"
+    env["OPENAI_API_KEY"] = "stub"
+    # Use feature_development workflow for default server
+    env["HEPHAESTUS_PHASES_FOLDER"] = str(Path(os.getcwd()) / "example_workflows" / "feature_development")
+    env["HEPHAESTUS_PROJECT_ROOT"] = os.getcwd()
     env["HEPHAESTUS_CLI_TOOL"] = "stub"
     env["PORT"] = str(SERVER_PORT)
     
@@ -87,10 +104,11 @@ def e2e_server():
 
             # 3. Create Workflow
             # Workflow: id, name, description, phases_folder_path, status, definition_id, created_at
+            phases_path = str(Path(os.getcwd()) / "example_workflows" / "feature_development")
             cursor.execute("""
                 INSERT OR IGNORE INTO workflows (id, name, description, phases_folder_path, status, definition_id, created_at) 
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, ('default', 'Default Workflow', 'Test Workflow', '/tmp', 'active', 'default-def', '2024-01-01 00:00:00'))
+            """, ('default', 'Default Workflow', 'Test Workflow', phases_path, 'active', 'default-def', '2024-01-01 00:00:00'))
             
             # 4. Create Board Config
             # BoardConfig: id, workflow_id, name, columns, ticket_types, initial_status, created_at, updated_at

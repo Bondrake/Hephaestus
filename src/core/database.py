@@ -320,10 +320,7 @@ class AgentWorktree(Base):
     base_commit_sha = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     merged_at = Column(DateTime)
-    merge_status = Column(
-        String,
-        CheckConstraint("merge_status IN ('active', 'merged', 'abandoned', 'cleaned')"),
-        default="active",
+    merge_status = Column(String, CheckConstraint("merge_status IN ('active', 'merged', 'abandoned', 'cleaned', 'ready_to_merge')"), default='active',
         nullable=False,
     )
     merge_commit_sha = Column(String)

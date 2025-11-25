@@ -695,9 +695,18 @@ async def startup_event():
     # Add authentication routes
     app.include_router(auth_router)
 
-    # Load phases if folder is specified
-    import os
+    # Mount static files for dashboard
+    from fastapi.staticfiles import StaticFiles
     from pathlib import Path
+    # Point to the built frontend
+    static_path = Path(os.getcwd()) / "frontend" / "dist"
+    if static_path.exists():
+        logger.info(f"Mounting static files from {static_path}")
+        app.mount("/", StaticFiles(directory=str(static_path), html=True), name="static")
+    else:
+        logger.warning(f"Static directory not found at {static_path}")
+
+    # Load phases if folder is specified
 
     logger.info("=== PHASE LOADING DEBUG ===")
     logger.info(f"Current working directory: {os.getcwd()}")
@@ -4168,7 +4177,7 @@ async def userinfo():
     }
 
 
-@app.get("/")
+@app.get("/mcp")
 async def root():
     """Root endpoint with MCP protocol info."""
     return {

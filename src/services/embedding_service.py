@@ -19,10 +19,16 @@ class EmbeddingService:
         Args:
             openai_api_key: OpenAI API key for generating embeddings
         """
-        self.client = openai.OpenAI(api_key=openai_api_key)
         self.config = get_config()
-        self.model = self.config.task_embedding_model
-        logger.info(f"Initialized EmbeddingService with model: {self.model}")
+        self.is_stub = openai_api_key == "stub" or self.config.llm_provider == "stub"
+        
+        if not self.is_stub:
+            self.client = openai.OpenAI(api_key=openai_api_key)
+            self.model = self.config.task_embedding_model
+            logger.info(f"Initialized EmbeddingService with model: {self.model}")
+        else:
+            logger.info("Initialized EmbeddingService in STUB mode")
+            self.model = "stub-model"
 
     @retry(
         stop=stop_after_attempt(3),
@@ -46,6 +52,13 @@ class EmbeddingService:
         Raises:
             Exception: If embedding generation fails after retries
         """
+        logger.info(f"EmbeddingService.generate_embedding called. is_stub={self.is_stub}")
+        if self.is_stub:
+            # Return dummy embedding of configured dimension
+            dim = 3072 # Hardcoded for E2E test stability
+            logger.info(f"Generating stub embedding of dimension {dim} (hardcoded)")
+            return [0.1] * dim
+
         try:
             # Truncate text if too long (max ~8000 tokens for most models)
             max_chars = 30000  # Conservative limit
